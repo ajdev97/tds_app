@@ -9,6 +9,7 @@ Dependencies (already in pyproject):
 from __future__ import annotations
 
 import logging
+import re
 from datetime import datetime
 from pathlib import Path
 
@@ -38,8 +39,15 @@ GROUP_FILTER = [
 ]
 
 
+def _normalize(name: str) -> str:  # CHG
+    """Lower‑case, strip punctuation, collapse spaces (internal key)."""
+    s = str(name).strip().lower()
+    s = re.sub(r"[^a-z0-9\s]", "", s)
+    return " ".join(s.split())
+
+
 # ─── Main routine ───────────────────────────────────────────────────────
-def run_step2() -> None:
+def run_step2(turnover_gt_10cr: bool = False) -> None:
     # --- Load Data ------------------------------------------------------
     logger.info("Reading Daybook & Ledger …")
     daybook_df = pd.read_excel(DAYBOOK_FILE, sheet_name=DAYBOOK_SHEET)
@@ -54,13 +62,7 @@ def run_step2() -> None:
     hardcoded_map = hardcoded_df.set_index("Vendor_clean").to_dict("index")
 
     # --- Turnover threshold -------------------------------------------
-    turnover_input = (
-        input("[Step 2] Was the turnover in the previous year > ₹10 crore? (y/n): ")
-        .strip()
-        .lower()
-    )
-    turnover_gt_10cr = turnover_input == "y"
-    logger.info("Turnover > 10 crore? %s", turnover_gt_10cr)
+    logger.info("Turnover > ₹10 crore flag: %s", turnover_gt_10cr)
 
     # --- Ledger PAN Mapping -------------------------------------------
     ledger_df.columns = ledger_df.columns.str.strip().str.lower()
@@ -85,17 +87,17 @@ def run_step2() -> None:
     ledger_pan_map = dict(zip(ledger_df["ledger name"], ledger_df["final_pan"]))
 
     # --- TDS Section Mapping ------------------------------------------
-    tds_map_df["Ledger_clean"] = (
-        tds_map_df["Ledger"].astype(str).str.strip().str.lower()
-    )
+    if "Ledger_norm" not in tds_map_df.columns:  # backward‑compat
+        tds_map_df["Ledger_norm"] = tds_map_df["Ledger"].apply(_normalize)
+
     tds_section_map = dict(
-        zip(tds_map_df["Ledger_clean"], tds_map_df["TDS Section"].fillna("NA"))
+        zip(tds_map_df["Ledger_norm"], tds_map_df["TDS Section"].fillna("NA"))
     )
 
     # --- Clean Daybook -------------------------------------------------
-    daybook_df["$LedgerName_clean"] = (
-        daybook_df["$LedgerName"].astype(str).str.strip().str.lower()
-    )
+
+    daybook_df["$LedgerName_norm"] = daybook_df["$LedgerName"].apply(_normalize)
+
     daybook_df["$Party_LedName_clean"] = (
         daybook_df["$Party_LedName"].astype(str).str.strip().str.lower()
     )
@@ -125,7 +127,7 @@ def run_step2() -> None:
 
         for _, row in expense_rows.iterrows():
             ledger_name = row["$LedgerName"]
-            ledger_clean = row["$LedgerName_clean"]
+            ledger_norm = row["$LedgerName_norm"]
             month = row["Month"]
             amount = -row["$Amount"]  # keep sign
             narration = row.get("$Narration", "")
@@ -156,7 +158,7 @@ def run_step2() -> None:
             if pan == "PAN not found":
                 discrepancies_missing_pan.add(vendor)
 
-            tds_section = tds_section_map.get(ledger_clean, "NA")
+            tds_section = tds_section_map.get(ledger_norm, "NA")
             if tds_section == "194Q" and not turnover_gt_10cr:
                 tds_section = "NA"
 
@@ -406,18 +408,28 @@ def run_step2() -> None:
 
 # ─── CLI wrapper (unchanged API) ────────────────────────────────────────
 def run_step2_cli(
-    daybook_file: str = "Daybook.xlsx",
-    ledger_file: str = "Ledger.xlsx",
+    daybook_file: str | None = None,
+    ledger_file: str | None = None,
+    turnover_gt_10cr: bool = False,
 ) -> None:
     """
-    Thin wrapper that overrides DAYBOOK_FILE / LEDGER_FILE constants, then
-    calls the existing run_step2() defined earlier in this script.
-    """
-    global DAYBOOK_FILE, LEDGER_FILE
-    DAYBOOK_FILE = daybook_file
-    LEDGER_FILE = ledger_file
+    Wrapper invoked by `tds-app run-all`.
 
-    run_step2()
+    It accepts three positional arguments in this order:
+        1. daybook_file  – path to Daybook.xlsx  (optional, default constant)
+        2. ledger_file   – path to Ledger.xlsx   (optional, default constant)
+        3. turnover_gt_10cr – True/False flag
+
+    Calling it with no arguments still works; it just uses the defaults.
+    """
+    global DAYBOOK_FILE, LEDGER_FILE  # allow runtime override
+
+    if daybook_file is not None:
+        DAYBOOK_FILE = daybook_file
+    if ledger_file is not None:
+        LEDGER_FILE = ledger_file
+
+    run_step2(turnover_gt_10cr=turnover_gt_10cr)
 
 
 if __name__ == "__main__":
