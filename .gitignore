@@ -1,0 +1,8 @@
+.venv/
+*.py[cod]
+*.xlsx
+parsed_26Q.xlsx
+tds*_*.xlsx
+Daybook.xlsx
+Ledger.xlsx
+26Q.docx
