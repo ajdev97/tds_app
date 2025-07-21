@@ -32,7 +32,7 @@ def _autofit_columns(df: pd.DataFrame, worksheet) -> None:
 # ─── Core logic ─────────────────────────────────────────────────────────
 def run_step3() -> None:
     logger.info("▶ Step 3 – reading input files…")
-    daybook_df = pd.read_excel(DAYBOOK_FILE, sheet_name="A__DayBook")
+    daybook_df = pd.read_excel(DAYBOOK_FILE, sheet_name="Sheet1")
     processed_df = pd.read_excel(PROCESSED_FILE)
 
     # 1️⃣ Preprocess group
@@ -41,9 +41,9 @@ def run_step3() -> None:
     # 2️⃣ Filter valid TDS ledgers (exclude Salary & 192)
     tds_ledger_mask = (
         (daybook_df["$Led_Group_Clean"] == "duties & taxes")
-        & (daybook_df["$LedgerName"].str.upper().str.contains("TDS"))
-        & (~daybook_df["$LedgerName"].str.upper().str.contains("SALARY"))
-        & (~daybook_df["$LedgerName"].str.contains(r"\b192\b", case=False, regex=True))
+        & (daybook_df["$LedgerName"].str.upper().str.contains("TDS",    na=False))
+        & (~daybook_df["$LedgerName"].str.upper().str.contains("SALARY", na=False))
+        & (~daybook_df["$LedgerName"].str.contains(r"\b192\b", case=False, regex=True, na=False))
     )
 
     tds_ledgers_used = sorted(daybook_df.loc[tds_ledger_mask, "$LedgerName"].unique())
