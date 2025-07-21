@@ -70,7 +70,11 @@ def odbc_fetch(
 # ── Step 1: section‑mapper ────────────────────────────────────────────
 @app.command("section-map")
 def section_map(
-    daybook: Path = typer.Argument(..., exists=True, help="Daybook.xlsx file"),
+    daybook: Path = typer.Option(
+        "Daybook.xlsx",
+        exists=False,          # file may be created by Step 0
+        help="Daybook workbook to classify (default: Daybook.xlsx)",
+    ),
 ) -> None:
     """Run Step 1 – map ledgers to TDS sections."""
     logger.info("▶ Step 1 – mapping ledgers…")
