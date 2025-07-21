@@ -1,38 +1,29 @@
-"""
-Global settings for the TDS App.
-Values can be overridden via environment variables or a `.env` file in the
-project root.  Example:
+# settings.py  (only the imports + model config changed)
 
-    DAYBOOK_FILE=MyDaybook.xlsx
-    LEDGER_FILE=MyLedger.xlsx
-"""
-
+from pydantic_settings import BaseSettings, SettingsConfigDict
+from functools import lru_cache
 from pathlib import Path
 
-from pydantic import Field
-# OLD (v1 style) ➜ from pydantic import BaseSettings, Field
-from pydantic_settings import BaseSettings  # ✅ NEW
-
-PROJECT_ROOT = Path(__file__).resolve().parents[2]  # C:/Projects/tds_app
-
-
 class Settings(BaseSettings):
-    # ── file paths ──────────────────────────────────────────────────────
-    daybook_file: Path = Field(default=PROJECT_ROOT / "Daybook.xlsx")
-    ledger_file: Path = Field(default=PROJECT_ROOT / "Ledger.xlsx")
-    form26q_file: Path = Field(default=PROJECT_ROOT / "26Q.docx")
+    """Central project settings loaded from environment or .env file."""
 
-    # ── OpenAI settings (Step 1) ────────────────────────────────────────
-    openai_api_key: str | None = Field(default=None, env="OPENAI_API_KEY")
-    openai_model: str = "gpt-4o-mini"
+    # ---------- core files ----------
+    daybook_file: str = "Daybook.xlsx"
+    ledger_file: str = "Ledger.xlsx"
+    form26q_file: str = "26Q.docx"
 
-    # ── misc options ────────────────────────────────────────────────────
-    verbose: bool = Field(default=False, env="TDS_VERBOSE")
+    # ---------- flags ----------
+    verbose: bool = False
+    odbc_dsn: str = "TallyODBC64_9000"          # ← new DSN setting
 
-    class Config:
-        env_file = PROJECT_ROOT / ".env"
-        env_file_encoding = "utf-8"
+    # ---------- pydantic-config ----------
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 
-# Singleton helper so every module imports the same instance
-settings = Settings()
+@lru_cache
+def get_settings() -> Settings:
+    return Settings()
+
+
+# Keep the convenient global for old imports
+settings = get_settings()
