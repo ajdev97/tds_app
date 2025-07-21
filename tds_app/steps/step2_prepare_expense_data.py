@@ -29,8 +29,8 @@ TDS_RATES_FILE = "tds_rates.csv"
 HARDCODED_VENDOR_FILE = "Hardcoded Vendors.csv"
 OUTPUT_FILE = "processed_expense_data_with_tds.xlsx"
 DISCREPANCY_FILE = "Discrepancies.xlsx"
-DAYBOOK_SHEET = "A__DayBook"
-LEDGER_SHEET = "Ledger"
+DAYBOOK_SHEET = "Sheet1"
+LEDGER_SHEET = "Sheet1"
 GROUP_FILTER = [
     "Direct Expenses",
     "Indirect Expenses",
