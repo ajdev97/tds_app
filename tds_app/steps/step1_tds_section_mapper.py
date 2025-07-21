@@ -37,7 +37,7 @@ logger = logging.getLogger(__name__)
 
 # ─── CONFIG ─────────────────────────────────────────────────────────────
 INPUT_FILE = "Daybook.xlsx"  # kept for wrapper backward‑compat
-DAYBOOK_SHEET = "A__DayBook"
+DAYBOOK_SHEET = "Sheet1"
 LEDGER_GROUPS_TO_INCLUDE = [
     "Direct Expenses",
     "Indirect Expenses",
