@@ -50,16 +50,32 @@ def _normalize(name: str) -> str:  # CHG
 def run_step2(turnover_gt_10cr: bool = False) -> None:
     # --- Load Data ------------------------------------------------------
     logger.info("Reading Daybook & Ledger …")
+    
+    # Check if required files exist
+    if not Path(DAYBOOK_FILE).exists():
+        raise FileNotFoundError(f"Daybook file not found: {DAYBOOK_FILE}")
+    if not Path(LEDGER_FILE).exists():
+        raise FileNotFoundError(f"Ledger file not found: {LEDGER_FILE}")
+    if not Path(TDS_MAPPING_FILE).exists():
+        raise FileNotFoundError(f"TDS mapping file not found: {TDS_MAPPING_FILE}")
+    if not Path(TDS_RATES_FILE).exists():
+        raise FileNotFoundError(f"TDS rates file not found: {TDS_RATES_FILE}")
+    
     daybook_df = pd.read_excel(DAYBOOK_FILE, sheet_name=DAYBOOK_SHEET)
     ledger_df = pd.read_excel(LEDGER_FILE, sheet_name=LEDGER_SHEET)
     tds_map_df = pd.read_csv(TDS_MAPPING_FILE)
     tds_rates_df = pd.read_csv(TDS_RATES_FILE)
 
-    hardcoded_df = pd.read_csv(HARDCODED_VENDOR_FILE)
-    hardcoded_df["Vendor_clean"] = (
-        hardcoded_df["Vendor"].astype(str).str.strip().str.lower()
-    )
-    hardcoded_map = hardcoded_df.set_index("Vendor_clean").to_dict("index")
+    # Load hardcoded vendors if file exists
+    hardcoded_map = {}
+    if Path(HARDCODED_VENDOR_FILE).exists():
+        hardcoded_df = pd.read_csv(HARDCODED_VENDOR_FILE)
+        hardcoded_df["Vendor_clean"] = (
+            hardcoded_df["Vendor"].astype(str).str.strip().str.lower()
+        )
+        hardcoded_map = hardcoded_df.set_index("Vendor_clean").to_dict("index")
+    else:
+        logger.warning(f"Hardcoded vendors file not found: {HARDCODED_VENDOR_FILE}")
 
     # --- Turnover threshold -------------------------------------------
     logger.info("Turnover > ₹10 crore flag: %s", turnover_gt_10cr)
@@ -140,9 +156,8 @@ def run_step2(turnover_gt_10cr: bool = False) -> None:
                 else "Unassigned"
             )
             if vendor == "Unassigned":
-                creditor_row = creditor_rows
-                if not creditor_row.empty:
-                    vendor = creditor_row.iloc[0]["$LedgerName"]
+                if not creditor_rows.empty:
+                    vendor = creditor_rows.iloc[0]["$LedgerName"]
                 else:
                     discrepancies_unassigned.append(
                         {
@@ -309,11 +324,10 @@ def run_step2(turnover_gt_10cr: bool = False) -> None:
             axis=1,
         )
 
-        return (
-            pd.concat([df_194q, df_other], ignore_index=True).sort_index()
-            if not df_194q.empty
-            else pd.concat([df_194q, df_other]).sort_index()
-        )
+        if not df_194q.empty:
+            return pd.concat([df_194q, df_other], ignore_index=True).sort_index()
+        else:
+            return df_other.sort_index()
 
     processed_df.insert(0, "Row No", range(1, len(processed_df) + 1))
     processed_df = calculate_tds_amounts(processed_df)

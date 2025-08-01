@@ -69,7 +69,15 @@ def _export(sql: str, outfile: Path, cnxn: pyodbc.Connection, *, chunksize: int 
 # ---------------------------------------------------------------------------
 def main() -> None:
     print("🔌  Connecting to Tally ODBC via DSN …")
-    cnxn = pyodbc.connect(f"DSN={DSN_NAME};")
+    try:
+        cnxn = pyodbc.connect(f"DSN={DSN_NAME};")
+    except pyodbc.Error as e:
+        print(f"❌  Failed to connect to ODBC DSN '{DSN_NAME}': {e}")
+        print("   Please ensure:")
+        print("   1. Tally is running and accessible")
+        print("   2. ODBC DSN is properly configured")
+        print("   3. You have the correct permissions")
+        raise
 
     print("\n── Exporting Daybook.xlsx (29 cols) ──")
     _export(DAYBOOK_SQL, Path("Daybook.xlsx"), cnxn, chunksize=CHUNKSIZE)

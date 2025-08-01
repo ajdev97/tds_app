@@ -20,7 +20,19 @@ logger = logging.getLogger(__name__)
 
 # ─── Core routine ───────────────────────────────────────────────────────
 def run_step5() -> None:
-    # --- 1️⃣ Load the three source sheets ---------------------------------
+    # --- 1️⃣ Load the three source sheets ---------------------------------
+    
+    # Check if required files exist
+    required_files = [
+        "tdspayable_tally.xlsx",
+        "processed_expense_data_with_tds.xlsx", 
+        "parsed_26Q.xlsx"
+    ]
+    
+    for file_path in required_files:
+        if not Path(file_path).exists():
+            raise FileNotFoundError(f"Required file not found: {file_path}")
+    
     tally_df = pd.read_excel("tdspayable_tally.xlsx")
     expense_raw = pd.read_excel("processed_expense_data_with_tds.xlsx")
     expense_df = expense_raw[
@@ -149,11 +161,10 @@ def run_step5() -> None:
     ]
     final_df = final_df[cols_order].sort_values(by=["Month", "Vendor Name", "PAN"])
 
-    # --- ✅ Export workbook ----------------------------------------------
+    # --- ✅ Export workbook ----------------------------------------------
     output_path = Path("tds_reconciliation_report.xlsx")
-    final_df.to_excel(output_path, index=False)
-
-    # Vendor‑PAN summary sheet
+    
+    # Vendor-PAN summary sheet
     vendor_summary = (
         final_df.groupby(["Vendor Name", "PAN"], dropna=False)
         .agg(
@@ -177,10 +188,17 @@ def run_step5() -> None:
         vendor_summary["Amount Paid as per Tally"]
         - vendor_summary["Amount Paid as per 26Q"]
     ).round(2)
-
-    with pd.ExcelWriter(output_path, engine="openpyxl", mode="w") as writer:
-        final_df.to_excel(writer, sheet_name="Monthwise Reconciliation", index=False)
-        vendor_summary.to_excel(writer, sheet_name="Vendor-PAN Summary", index=False)
+    
+    try:
+        with pd.ExcelWriter(output_path, engine="openpyxl", mode="w") as writer:
+            final_df.to_excel(writer, sheet_name="Monthwise Reconciliation", index=False)
+            vendor_summary.to_excel(writer, sheet_name="Vendor-PAN Summary", index=False)
+    except PermissionError:
+        raise PermissionError(
+            f"Cannot write to {output_path}. Please close the file if it's open in Excel."
+        )
+    except Exception as e:
+        raise RuntimeError(f"Failed to write Excel file: {e}")
 
     logger.info("Reconciliation completed → %s", output_path)
 

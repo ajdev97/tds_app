@@ -55,10 +55,19 @@ MODEL_NAME = "gpt-4o-mini"
 WAIT_BETWEEN_REQUESTS = 20  # seconds
 # ────────────────────────────────────────────────────────────────────────
 
-api_key = os.getenv("OPENAI_API_KEY")
-if not api_key:
-    raise EnvironmentError("OPENAI_API_KEY is not set.")
-client = AsyncOpenAI(api_key=api_key)
+def get_openai_client():
+    """Get OpenAI client with proper error handling."""
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        raise EnvironmentError(
+            "OPENAI_API_KEY environment variable is not set. "
+            "Please set it with your OpenAI API key:\n"
+            "Windows: set OPENAI_API_KEY=your-key-here\n"
+            "Linux/Mac: export OPENAI_API_KEY=your-key-here"
+        )
+    return AsyncOpenAI(api_key=api_key)
+
+client = get_openai_client()
 
 SYSTEM_MSG = (
     "You are a chartered accountant specialising in Indian TDS. "
@@ -139,6 +148,7 @@ async def classify_batch(batch: list[str]) -> dict[str, str]:
             + "\n".join(f"- {name}" for name in batch)
         )
         try:
+            client = get_openai_client()  # Get fresh client
             response = await client.chat.completions.create(
                 model=MODEL_NAME,
                 messages=[
@@ -232,7 +242,7 @@ def run_step1(daybook_file: str = "Daybook.xlsx") -> None:
     """Thin wrapper used by the Typer CLI."""
 
     # Dynamically override settings for this invocation
-    settings.daybook_file = Path(daybook_file)  # type: ignore[assignment]
+    settings.daybook_file = daybook_file  # type: ignore[assignment]
 
     asyncio.run(main())
 

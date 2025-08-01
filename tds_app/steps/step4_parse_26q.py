@@ -55,6 +55,11 @@ def iter_blocks(doc: Document):
 
 def run_step4() -> None:
     logger.info("Parsing 26Q: %s", SOURCE_DOCX)
+    
+    # Check if source file exists
+    if not Path(SOURCE_DOCX).exists():
+        raise FileNotFoundError(f"26Q document not found: {SOURCE_DOCX}")
+    
     doc = Document(SOURCE_DOCX)
     rows: list[dict] = []
     section = vendor = pan = None  # running context

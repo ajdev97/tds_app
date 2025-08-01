@@ -31,7 +31,14 @@ def _autofit_columns(df: pd.DataFrame, worksheet) -> None:
 
 # ─── Core logic ─────────────────────────────────────────────────────────
 def run_step3() -> None:
-    logger.info("▶ Step 3 – reading input files…")
+    logger.info("▶ Step 3 – reading input files…")
+    
+    # Check if required files exist
+    if not Path(DAYBOOK_FILE).exists():
+        raise FileNotFoundError(f"Daybook file not found: {DAYBOOK_FILE}")
+    if not Path(PROCESSED_FILE).exists():
+        raise FileNotFoundError(f"Processed expense file not found: {PROCESSED_FILE}")
+    
     daybook_df = pd.read_excel(DAYBOOK_FILE, sheet_name="Sheet1")
     processed_df = pd.read_excel(PROCESSED_FILE)
 
